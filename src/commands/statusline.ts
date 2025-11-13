@@ -2,8 +2,14 @@ import fs from "fs-extra";
 import path from "path";
 import chalk from "chalk";
 import { homedir } from "os";
-import { checkAndInstallDependencies, installStatuslineDependencies } from "./setup/dependencies.js";
-import { downloadDirectoryFromGitHub } from "./setup/utils.js";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import {
+  checkAndInstallDependencies,
+  installStatuslineDependencies,
+} from "./setup/dependencies.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface StatuslineOptions {
   folder?: string;
@@ -22,17 +28,27 @@ export async function statuslineCommand(options: StatuslineOptions) {
   console.log(chalk.cyan("📦 Checking dependencies..."));
   await checkAndInstallDependencies();
 
-  console.log(chalk.cyan("\n📥 Downloading statusline files..."));
+  console.log(chalk.cyan("\n📥 Copying statusline files..."));
   const scriptsDir = path.join(claudeDir, "scripts");
   await fs.ensureDir(scriptsDir);
 
-  const success = await downloadDirectoryFromGitHub(
-    "scripts/statusline",
-    path.join(scriptsDir, "statusline")
+  // Copy from local claude-code-config directory
+  const sourceDir = path.join(
+    __dirname,
+    "../../claude-code-config/scripts/statusline",
   );
+  const targetDir = path.join(scriptsDir, "statusline");
 
-  if (!success) {
-    console.log(chalk.red("  Failed to download statusline files from GitHub"));
+  try {
+    await fs.copy(sourceDir, targetDir, { overwrite: true });
+    console.log(chalk.gray("  ✓ Statusline files copied successfully"));
+  } catch (error) {
+    console.log(chalk.red("  Failed to copy statusline files"));
+    console.log(
+      chalk.red(
+        `  Error: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+    );
     return;
   }
 
